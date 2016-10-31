@@ -1,0 +1,6 @@
+.vs/*
+bin/*
+csx/*
+ecf/*
+obj/*
+packages/*
