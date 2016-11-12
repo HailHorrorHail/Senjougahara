@@ -11,7 +11,7 @@ CREATE TABLE dbo.Event
 	[ParentId]		int,
 	[Title]			varchar(100) not null,
 	[Description]	varchar(1000),
-	[Status]		tinyint not null,
+	[StatusId]		tinyint not null,
 	[CreatedDTim]	datetime DEFAULT(getutcdate()),
 	[ModifiedDTim]	datetime not null,
 
