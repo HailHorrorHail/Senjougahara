@@ -17,7 +17,10 @@ namespace Debugger
             var parser = Parser.GetInstance();
             var wc = WebCaller.GetInstance(parser);
 
-            wc.PostUrl("http://localhost:61418/Events", "Title=Test&Description=SomeDescription");
+            wc.PostUrl("http://localhost:61418/Events", "POST", "Title=Test","Description=SomeDescription");
+            wc.PostUrl("http://localhost:61418/Events", "DELETE", "Id=0");
+
+            wc.GetUrl(@"http://localhost:61418/Events?Id=0");
         }
 
         private static void RunGetRequests()

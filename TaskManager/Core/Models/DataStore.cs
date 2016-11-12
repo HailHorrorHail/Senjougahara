@@ -7,20 +7,20 @@ using System.Threading.Tasks;
 namespace TaskManager.Models
 {
     public class DataStore
-    {        
-        private static List<Event> eventsStore = new List<Event>();
+    {
+        private static Dictionary<int, Event> eventsStore = new Dictionary<int, Event>();
         private static Queue<Tuple<Event, DataStoreAction>> dataStoreQueue = new Queue<Tuple<Event, DataStoreAction>>();
 
         private DataStore()
         {
-            eventsStore.Add(new Event { Id = 1, Title = "Do this", Description = "Because this 1" });
-            eventsStore.Add(new Event { Id = 2, Title = "Do that", Description = "Because this 2" });
-            eventsStore.Add(new Event { Id = 3, Title = "Say this", Description = "Because this 3" });
-            eventsStore.Add(new Event { Id = 4, Title = "Say that", Description = "Because this 4" });
-            eventsStore.Add(new Event { Id = 5, Title = "Say nothing", Description = "Because this 5" });
-            eventsStore.Add(new Event { Id = 6, Title = "Do nothing", Description = "Because this 6" });
-            eventsStore.Add(new Event { Id = 7, Title = "Plan this", Description = "Because this 7" });
-            eventsStore.Add(new Event { Id = 8, Title = "Plan that", Description = "Because this 8" });
+            eventsStore.Add(1, new Event { Id = 1, Title = "Do this", Description = "Because this 1" });
+            eventsStore.Add(2, new Event { Id = 2, Title = "Do that", Description = "Because this 2" });
+            eventsStore.Add(3, new Event { Id = 3, Title = "Say this", Description = "Because this 3" });
+            eventsStore.Add(4, new Event { Id = 4, Title = "Say that", Description = "Because this 4" });
+            eventsStore.Add(5, new Event { Id = 5, Title = "Say nothing", Description = "Because this 5" });
+            eventsStore.Add(6, new Event { Id = 6, Title = "Do nothing", Description = "Because this 6" });
+            eventsStore.Add(7, new Event { Id = 7, Title = "Plan this", Description = "Because this 7" });
+            eventsStore.Add(8, new Event { Id = 8, Title = "Plan that", Description = "Because this 8" });
         }
 
         public static DataStore GetInstance()
@@ -30,19 +30,20 @@ namespace TaskManager.Models
 
         internal IQueryable<Event> Find(int id)
         {
-            return eventsStore.Where(e => e.Id == id).AsQueryable();
+            return eventsStore.Where(e => e.Key == id).Select(d => d.Value).AsQueryable();
         }
 
         internal IQueryable<Event> GetAll()
         {
-            return eventsStore.AsQueryable();
+            return eventsStore.Select(d => d.Value).AsQueryable();
         }
 
         internal Task PostAsync(Event newEvent)
         {
             return Task.Factory.StartNew
                 (
-                    () => eventsStore.Add(newEvent)
+                    // ignore unique id's
+                    () => eventsStore.Add(newEvent.Id, newEvent)
                 );
         }
 
