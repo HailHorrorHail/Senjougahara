@@ -10,10 +10,10 @@
     using System.Web.Http;
     using System.Web.OData;
 
-    public class EventController : ODataController
+    public class EventsController : ODataController
     {
         // EventsContext data = new EventsContext();
-        DataStore data = new DataStore();
+        DataStore data =  DataStore.GetInstance();
 
         private bool EventExists(int id)
         {

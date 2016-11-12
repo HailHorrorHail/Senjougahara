@@ -1,0 +1,7 @@
+Commands:
+
+Get event with Id	-> http://localhost:61418/Events?Id=1
+Get all events		-> http://localhost:61418/Events
+
+
+Post a new event	-> http://localhost:61418/Events

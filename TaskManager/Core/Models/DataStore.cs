@@ -7,11 +7,11 @@ using System.Threading.Tasks;
 namespace TaskManager.Models
 {
     public class DataStore
-    {
+    {        
         private static List<Event> eventsStore = new List<Event>();
         private static Queue<Tuple<Event, DataStoreAction>> dataStoreQueue = new Queue<Tuple<Event, DataStoreAction>>();
 
-        public DataStore()
+        private DataStore()
         {
             eventsStore.Add(new Event { Id = 1, Title = "Do this", Description = "Because this 1" });
             eventsStore.Add(new Event { Id = 2, Title = "Do that", Description = "Because this 2" });
@@ -21,6 +21,11 @@ namespace TaskManager.Models
             eventsStore.Add(new Event { Id = 6, Title = "Do nothing", Description = "Because this 6" });
             eventsStore.Add(new Event { Id = 7, Title = "Plan this", Description = "Because this 7" });
             eventsStore.Add(new Event { Id = 8, Title = "Plan that", Description = "Because this 8" });
+        }
+
+        public static DataStore GetInstance()
+        {
+            return Singleton.instance;
         }
 
         internal IQueryable<Event> Find(int id)
@@ -60,6 +65,14 @@ namespace TaskManager.Models
         internal void Remove(Event itemToRemove)
         {
             dataStoreQueue.Enqueue(Tuple.Create(itemToRemove, DataStoreAction.Delete));
+        }
+
+        private class Singleton
+        {
+            static Singleton()
+            { /* required for compiler reasons */ }
+
+            internal static readonly DataStore instance = new DataStore();
         }
     }
 }
