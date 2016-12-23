@@ -90,7 +90,7 @@
                 return BadRequest();
             }
 
-            data.Entry(update).State = EntityState.Modified;
+            data.UpdateEntry(update).State = EntityState.Modified;
             try
             {
                 await data.SaveChangesAsync();
@@ -119,7 +119,9 @@
             }
 
             data.Remove(eventItem.First());
-            await data.SaveChangesAsync();
+            Task t = data.SaveChangesAsync();
+            t.Wait();
+
             return StatusCode(HttpStatusCode.NoContent);
         }
     }

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Data.Entity;
 using System.Linq;
 using System.Threading.Tasks;
 
@@ -10,6 +9,8 @@ namespace TaskManager.Models
     {
         private static Dictionary<int, Event> eventsStore = new Dictionary<int, Event>();
         private static Queue<Tuple<Event, DataStoreAction>> dataStoreQueue = new Queue<Tuple<Event, DataStoreAction>>();
+        private static int ids = 0;
+        private static readonly TaskFactory TF = new TaskFactory();
 
         private DataStore()
         {
@@ -21,6 +22,7 @@ namespace TaskManager.Models
             eventsStore.Add(6, new Event { Id = 6, Title = "Do nothing", Description = "Because this 6" });
             eventsStore.Add(7, new Event { Id = 7, Title = "Plan this", Description = "Because this 7" });
             eventsStore.Add(8, new Event { Id = 8, Title = "Plan that", Description = "Because this 8" });
+            ids = 8;
         }
 
         public static DataStore GetInstance()
@@ -42,8 +44,11 @@ namespace TaskManager.Models
         {
             return Task.Factory.StartNew
                 (
-                    // ignore unique id's
-                    () => eventsStore.Add(newEvent.Id, newEvent)
+                    () =>
+                    {
+                        newEvent.Id = ids++;
+                        eventsStore.Add(newEvent.Id, newEvent);
+                    }
                 );
         }
 
@@ -52,15 +57,54 @@ namespace TaskManager.Models
             return Task.Factory.StartNew(() => { return Find(key); });
         }
 
-        internal EventEntry Entry(Event newItem)
+        internal EventEntry UpdateEntry(Event newItem)
         {
-            dataStoreQueue.Enqueue(Tuple.Create(newItem, DataStoreAction.Add));
+            dataStoreQueue.Enqueue(Tuple.Create(newItem, DataStoreAction.Update));
             return new EventEntry();
         }
 
         internal Task SaveChangesAsync()
         {
-            throw new NotImplementedException();
+            // lame implementation
+            return TF.StartNew(() => 
+            {
+                try
+                {
+                    while (dataStoreQueue.Count > 0)
+                    {
+                        var tp = dataStoreQueue.Dequeue();
+                        Event e = tp.Item1;
+
+                        switch (tp.Item2)
+                        {
+                            case DataStoreAction.Add:
+                                eventsStore.Add(e.Id, e);
+                                break;
+
+                            case DataStoreAction.Delete:
+                                eventsStore.Remove(e.Id);
+                                break;
+
+                            case DataStoreAction.Update:
+                                if (!string.IsNullOrWhiteSpace(e.Title))
+                                {
+                                    eventsStore[e.Id].Title = e.Title;
+                                }
+
+                                if (!string.IsNullOrWhiteSpace(e.Description))
+                                {
+                                    eventsStore[e.Id].Description = e.Description;
+                                }
+
+                                break;
+                        }
+                    }
+                }
+                catch (Exception ex)
+                {
+                    Console.WriteLine("Shit fucked up: {0}", ex.ToString());
+                }
+            });
         }
 
         internal void Remove(Event itemToRemove)

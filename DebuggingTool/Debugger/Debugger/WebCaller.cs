@@ -11,6 +11,9 @@ namespace Debugger
 {
     internal class WebCaller
     {
+        private const string CallString = "----->   Calling {0}   <-----";
+        private const string RetString = "-----< Recieved {0} >-----";
+
         internal static WebCaller GetInstance(Parser p)
         {
             return new WebCaller(p);
@@ -25,14 +28,28 @@ namespace Debugger
 
         internal void GetUrl(string url)
         {
-            Console.WriteLine($"------------>Calling<------------{Environment.NewLine}{url}{Environment.NewLine}");
+            DbLogger.Write.Information(CallString, url);
 
             WebRequest wr = WebRequest.Create(url);
-            Stream objStream = wr.GetResponse().GetResponseStream();
-
-            StreamReader objReader = new StreamReader(objStream);
-
-            Console.WriteLine($"Recieved:{Environment.NewLine}{parser.Parse(objReader.ReadToEnd())}{Environment.NewLine}");
+            Stream objStream;
+            string output = null;
+            try
+            {
+                objStream = wr.GetResponse().GetResponseStream();
+                StreamReader objReader = new StreamReader(objStream);
+                output = parser.Parse(objReader.ReadToEnd());
+            }
+            catch (WebException ex)
+            {
+                output = ex.Message;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine(ex.ToString());
+            }
+            
+            DbLogger.Write.Information(RetString, string.Empty);
+            DbLogger.Write.Information("{0}{1}", output, Environment.NewLine);
         }
 
         internal void PostUrl(string url, string method, params string[] postData)
@@ -43,53 +60,75 @@ namespace Debugger
 
         internal async Task PostUrlAsync(string url, string method, params string[] postData)
         {
-            string postDataSingle = string.Join("&", postData);
-            Console.WriteLine($"------------>Calling<------------{Environment.NewLine}{url} --> {method} --> {postDataSingle}{Environment.NewLine}");
-
-            string responseString, reason;
-            HttpRequestMessage retRequestMsg;
-            HttpStatusCode statusCode;
-            using (var client = new HttpClient())
+            try
             {
-                Dictionary<string, string> values = postData.ToDictionary(d => d.Split('=')[0], d => d.Split('=')[1]);
+                string postDataSingle = string.Join("&", postData);
+                DbLogger.Write.Information(CallString, url);
+                DbLogger.Write.Information("\t{0} --> {1}", method, postDataSingle);
 
-                var content = new FormUrlEncodedContent(values);
+                string responseString, reason;
+                HttpRequestMessage retRequestMsg;
+                HttpStatusCode statusCode;
+                using (var client = new HttpClient())
+                {
+                    HttpResponseMessage response = null;
+                    Dictionary<string, string> values;
+                    FormUrlEncodedContent content;
+                    switch (method)
+                    {
+                        case "POST":
+                            values = postData.ToDictionary(d => d.Split('=')[0], d => d.Split('=')[1]);
+                            content = new FormUrlEncodedContent(values);
 
-                var response = await client.PostAsync(url, content);
-                reason = response.ReasonPhrase;
-                statusCode = response.StatusCode;
+                            response = await client.PostAsync(url, content);
+                            break;
 
-                retRequestMsg = response.RequestMessage;
+                        case "DELETE":
+                            response = await client.DeleteAsync(url);
+                            break;
 
-                responseString = await response.Content.ReadAsStringAsync();
+                        case "UPDATE":
+                            values = postData.ToDictionary(d => d.Split('=')[0], d => d.Split('=')[1]);
+                            content = new FormUrlEncodedContent(values);
+
+                            client.DefaultRequestHeaders.Add("Accept", "application/json;odata=verbose");
+                            client.DefaultRequestHeaders.Add("X-HTTP-Method", "MERGE");
+                            client.DefaultRequestHeaders.Add("IF-MATCH", "*");
+                            response = await client.PutAsync(url, content);
+                            break;
+
+                        default:
+                            DbLogger.Write.Error("Unknown method:{0}", method);
+                            break;
+                    }
+                    
+                    reason = response.ReasonPhrase;
+                    statusCode = response.StatusCode;
+
+                    retRequestMsg = response.RequestMessage;
+
+                    responseString = await response.Content.ReadAsStringAsync();
+                }
+                
+                DbLogger.Write.Verbose("{1}Returned Request{1}{0}{1}", retRequestMsg.ToString(), Environment.NewLine);
+                DbLogger.Write.Information(RetString, statusCode);
+                if (statusCode != HttpStatusCode.OK)
+                {
+                    DbLogger.Write.Error("Status Code:{0} due to:{1}", statusCode, reason);
+                    DbLogger.Write.Information(parser.ParseError(responseString));
+                    DbLogger.Write.Verbose("{0}{1}", parser.Parse(responseString), Environment.NewLine);
+                }
+                else
+                {
+                    DbLogger.Write.Information("{0}{1}", parser.Parse(responseString), Environment.NewLine);
+                }
+            }
+            catch (Exception ex)
+            {
+                DbLogger.Write.Error(ex.ToString());
             }
 
-            Console.WriteLine($"Returned Request:{Environment.NewLine}{retRequestMsg.ToString()}{Environment.NewLine}");
-            Console.WriteLine($"Recieved (Reason:{reason} Status:{statusCode}):{Environment.NewLine}{parser.Parse(responseString)}{Environment.NewLine}");
-        }
-
-        internal void PostUrl_Old(string url, string method, params string[] postData)
-        {
-            string postDataSingle = string.Join("&", postData);
-            Console.WriteLine($"------------>Calling<------------{Environment.NewLine}{url} --> {method} --> {postDataSingle}{Environment.NewLine}");
-
-            var req = (HttpWebRequest)WebRequest.Create(url);
-
-            var data = Encoding.ASCII.GetBytes(postDataSingle);
-
-            req.Method = method;
-            req.ContentType = "application/x-www-form-urlencoded";
-            req.ContentLength = data.Length;
-
-            using (var stream = req.GetRequestStream())
-            {
-                stream.Write(data, 0, data.Length);
-            }
-
-            var resp = (HttpWebResponse)req.GetResponse();
-            var responseString = new StreamReader(resp.GetResponseStream()).ReadToEnd();
-
-            Console.WriteLine($"Recieved:{Environment.NewLine}{parser.Parse(responseString)}{Environment.NewLine}");
+            DbLogger.Write.Information("");
         }
     }
 }

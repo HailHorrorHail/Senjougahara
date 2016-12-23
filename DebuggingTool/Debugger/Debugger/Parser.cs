@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Text;
 
 namespace Debugger
@@ -75,6 +76,54 @@ namespace Debugger
             }
 
             return sb.ToString();
+        }
+
+        internal string ParseError(string responseString)
+        {
+            StringBuilder sb = new StringBuilder();
+            string[] strElements = responseString.Split(',');
+
+            foreach (string str in strElements)
+            {
+                string[] values = str.Split(':');
+
+                if (str.Contains("\"error\""))
+                {
+                    sb.Append("\tError:");
+                }
+                else if (str.Contains("\"innererror\""))
+                {
+                    sb.AppendLine();
+                    sb.Append("\tInner Error:");
+                }
+
+                int loc = FindLocation(values, "\"code\"") + 1;
+                if (loc > 0)
+                {
+                    sb.AppendFormat("Code:{0}", values[loc]);
+                }
+
+                loc = FindLocation(values, "\"message\"") + 1;
+                if (loc > 0)
+                {
+                    sb.AppendFormat("Message:{0}", values[loc]);
+                }
+            }
+
+            return sb.ToString();
+        }
+
+        private int FindLocation(string[] values, string target)
+        {
+            for (int i = 0; i < values.Length; i++)
+            {
+                if (values[i].Contains(target))
+                {
+                    return i;
+                }
+            }
+
+            return -50;
         }
     }
 }
